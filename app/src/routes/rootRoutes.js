@@ -9,11 +9,8 @@ router.get("/:id", UserController.getUserById);
 router.put("/:id", UserController.updateUser);
 router.delete("/:id", UserController.deleteUser);
 
-// router.use("/user", require("../routes/root"));
-
-router.use(errorHandler);
-
-module.exports = router;
+router.use("/emloyee", require("../controllers/emloyeeController"));
+router.use("/attend", require("../controllers/attendanceController"));
 
 // catch api all errors
 router.use(errorHandler);

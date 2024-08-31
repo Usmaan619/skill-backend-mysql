@@ -10,16 +10,15 @@ const dbConfig = {
   port: process.env.DB_PORT,
 };
 
-let connection;
-
 async function connectToDatabase() {
   try {
-    connection = await mysql.createConnection(dbConfig);
+    const connection = await mysql.createConnection(dbConfig);
     console.log("Connected to MySQL");
+    return connection;
   } catch (err) {
     console.error("Error connecting to MySQL:", err);
     process.exit(1);
   }
 }
 
-module.exports = { connectToDatabase, connection };
+module.exports = { connectToDatabase };
