@@ -1,69 +1,82 @@
-const { connectToDatabase } = require("../../config/db");
 const moment = require("moment");
+const bcrypt = require("bcrypt");
+const { APIError } = require("rest-api-errors");
+const { connectToDatabase } = require("../../config/db");
 const { hashedPassword, getToken } = require("../utils/helper");
 require("dotenv").config();
 
-const bcrypt = require("bcrypt");
-const { APIError } = require("rest-api-errors");
 class EmployeeModel {
-  static async createEmployee(employeeData) {
+  static async withConnection(callback) {
     const connection = await connectToDatabase();
-    let {
-      first_name,
-      last_name,
-      mobile_number,
-      address,
-      department,
-      date_of_join,
-      current_salary,
-      position,
-      last_hike_date,
-      last_hike_amount,
-      passwd,
-      email,
-      isActive,
-    } = employeeData;
+    try {
+      return await callback(connection);
+    } catch (err) {
+      throw err;
+    } finally {
+      connection.end();
+    }
+  }
 
-    const hashPasswd = await hashedPassword(passwd);
-
-    const [result] = await connection.execute(
-      "INSERT INTO  employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount,passwd,email, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)",
-      [
+  static async createEmployee(employeeData) {
+    return this.withConnection(async (connection) => {
+      const {
         first_name,
         last_name,
         mobile_number,
         address,
         department,
-        (date_of_join = moment().format("YYYY-MM-DD")),
+        date_of_join = moment().format("YYYY-MM-DD"),
         current_salary,
         position,
-        (last_hike_date = moment().format("YYYY-MM-DD")),
+        last_hike_date = moment().format("YYYY-MM-DD"),
         last_hike_amount,
-        (passwd = hashPasswd),
+        passwd,
         email,
         isActive,
-      ]
-    );
+      } = employeeData;
 
-    return result.insertId;
+      const hashPasswd = await hashedPassword(passwd);
+
+      const [result] = await connection.execute(
+        "INSERT INTO employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount, passwd, email, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+          first_name,
+          last_name,
+          mobile_number,
+          address,
+          department,
+          date_of_join,
+          current_salary,
+          position,
+          last_hike_date,
+          last_hike_amount,
+          hashPasswd,
+          email,
+          isActive,
+        ]
+      );
+
+      return result.insertId;
+    });
   }
 
   static async loginEmployee(email, passwd) {
-    const connection = await connectToDatabase();
-    try {
+    return this.withConnection(async (connection) => {
       const [rows] = await connection.execute(
         "SELECT * FROM employee WHERE email = ?",
         [email]
       );
-      connection.end();
 
-      if (!rows.length)
-        throw new APIError(404, "404", "Employee not found please register");
+      if (!rows.length) {
+        throw new APIError(404, "404", "Employee not found, please register");
+      }
 
       const employee = rows[0];
       const isValidPassword = await bcrypt.compare(passwd, employee?.passwd);
 
-      if (!isValidPassword) throw new APIError(400, "400", "Invalid password");
+      if (!isValidPassword) {
+        throw new APIError(400, "400", "Invalid password");
+      }
 
       // Generate JWT token
       const token = getToken(employee?.id, employee.email);
@@ -71,46 +84,29 @@ class EmployeeModel {
       // Return token without sensitive info
       delete employee.passwd;
       return { ...employee, token };
-    } catch (err) {
-      connection.end();
-      throw err;
-    }
+    });
   }
 
   static async getAllEmployees() {
-    const connection = await connectToDatabase();
-    const [rows] = await connection.execute("SELECT * FROM  employee");
-    return rows;
+    return this.withConnection(async (connection) => {
+      const [rows] = await connection.execute("SELECT * FROM employee");
+      return rows;
+    });
   }
 
   static async getEmployeeById(id) {
-    const connection = await connectToDatabase();
-    const [row] = await connection.execute(
-      "SELECT * FROM  employee WHERE id = ?",
-      [id]
-    );
-    return row[0];
+    return this.withConnection(async (connection) => {
+      const [row] = await connection.execute(
+        "SELECT * FROM employee WHERE id = ?",
+        [id]
+      );
+      return row[0];
+    });
   }
 
   static async updateEmployee(id, employeeData) {
-    const connection = await connectToDatabase();
-    const {
-      first_name,
-      last_name,
-      mobile_number,
-      address,
-      department,
-      date_of_join,
-      current_salary,
-      position,
-      last_hike_date,
-      last_hike_amount,
-      isActive,
-    } = employeeData;
-
-    await connection.execute(
-      "UPDATE  employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, isActive = ? WHERE id = ?",
-      [
+    return this.withConnection(async (connection) => {
+      const {
         first_name,
         last_name,
         mobile_number,
@@ -122,22 +118,41 @@ class EmployeeModel {
         last_hike_date,
         last_hike_amount,
         isActive,
-        id,
-      ]
-    );
+      } = employeeData;
+
+      await connection.execute(
+        "UPDATE employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, isActive = ? WHERE id = ?",
+        [
+          first_name,
+          last_name,
+          mobile_number,
+          address,
+          department,
+          date_of_join,
+          current_salary,
+          position,
+          last_hike_date,
+          last_hike_amount,
+          isActive,
+          id,
+        ]
+      );
+    });
   }
 
   static async deleteEmployee(id) {
-    const connection = await connectToDatabase();
-    await connection.execute("DELETE FROM users WHERE id = ?", [id]);
+    return this.withConnection(async (connection) => {
+      await connection.execute("DELETE FROM employee WHERE id = ?", [id]);
+    });
   }
 
   static async toggleEmployeeStatus(id) {
-    const connection = await connectToDatabase();
-    await connection.execute(
-      "UPDATE  employee SET isActive = !isActive WHERE id = ?",
-      [id]
-    );
+    return this.withConnection(async (connection) => {
+      await connection.execute(
+        "UPDATE employee SET isActive = !isActive WHERE id = ?",
+        [id]
+      );
+    });
   }
 }
 

@@ -9,7 +9,7 @@ module.exports = (() => {
   };
   this.getToken = (id, email) => {
     return jwt.sign({ id, email }, process.env.SECRET, {
-      expiresIn: "30s",
+      expiresIn: "30 day",
     });
   };
 
