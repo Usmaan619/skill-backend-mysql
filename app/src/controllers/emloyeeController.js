@@ -1,14 +1,29 @@
 const EmployeeModel = require("../models/employeeModal");
 const express = require("express");
+const { getToken } = require("../utils/helper");
 const router = express();
+
 router.post("/create", async (req, res, next) => {
   try {
-    const employeeId = await EmployeeModel.createEmployee(req.body);
+    const employeeId = await EmployeeModel.createEmployee(req?.body);
     res.status(201).json({ id: employeeId });
   } catch (err) {
     next(err);
   }
 });
+
+router.post("/login", async (req, res, next) => {
+  try {
+    const employee = await EmployeeModel.loginEmployee(
+      req?.body?.email,
+      req?.body?.passwd
+    );
+    res.json({ employee, message: "Login Successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 class EmployeeController {
   static async createEmployee(req, res, next) {
     try {

@@ -1,7 +1,10 @@
 const { connectToDatabase } = require("../../config/db");
 const moment = require("moment");
+const { hashedPassword, getToken } = require("../utils/helper");
 require("dotenv").config();
 
+const bcrypt = require("bcrypt");
+const { APIError } = require("rest-api-errors");
 class EmployeeModel {
   static async createEmployee(employeeData) {
     const connection = await connectToDatabase();
@@ -16,11 +19,15 @@ class EmployeeModel {
       position,
       last_hike_date,
       last_hike_amount,
+      passwd,
+      email,
       isActive,
     } = employeeData;
 
+    const hashPasswd = await hashedPassword(passwd);
+
     const [result] = await connection.execute(
-      "INSERT INTO  employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO  employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount,passwd,email, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?)",
       [
         first_name,
         last_name,
@@ -32,11 +39,42 @@ class EmployeeModel {
         position,
         (last_hike_date = moment().format("YYYY-MM-DD")),
         last_hike_amount,
+        (passwd = hashPasswd),
+        email,
         isActive,
       ]
     );
 
     return result.insertId;
+  }
+
+  static async loginEmployee(email, passwd) {
+    const connection = await connectToDatabase();
+    try {
+      const [rows] = await connection.execute(
+        "SELECT * FROM employee WHERE email = ?",
+        [email]
+      );
+      connection.end();
+
+      if (!rows.length)
+        throw new APIError(404, "404", "Employee not found please register");
+
+      const employee = rows[0];
+      const isValidPassword = await bcrypt.compare(passwd, employee?.passwd);
+
+      if (!isValidPassword) throw new APIError(400, "400", "Invalid password");
+
+      // Generate JWT token
+      const token = getToken(employee?.id, employee.email);
+
+      // Return token without sensitive info
+      delete employee.passwd;
+      return { ...employee, token };
+    } catch (err) {
+      connection.end();
+      throw err;
+    }
   }
 
   static async getAllEmployees() {

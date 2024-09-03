@@ -1,15 +1,15 @@
-const { connectToDatabase } = require("../../config/db");
 const moment = require("moment");
+const { connectToDatabase } = require("../../config/db");
 class AttendanceModel {
   static async createAttendance(attendanceData) {
-    const connection = await connect();
+    const connection = await connectToDatabase();
     try {
       const [result] = await connection.execute(
         "INSERT INTO attendance (employee_id, attendance_date, present, profile_img) VALUES (?, ?, ?, ?)",
         [
           attendanceData?.employee_id,
           moment().format("YYYY-MM-DD"), // Using current date if not provided
-          attendanceData?.present ?? false, // Defaulting to false if not provided
+          attendanceData?.present ?? "false", // Defaulting to false if not provided
           attendanceData?.profile_img ?? null, // Setting to null if not provided
         ]
       );
@@ -23,12 +23,16 @@ class AttendanceModel {
   static async getAllAttendances() {
     const conn = await connectToDatabase();
     const [rows] = await conn.execute("SELECT * FROM attendance");
+
+    rows.forEach((row) => {
+      delete row?.profile_img;
+    });
     conn.end();
     return rows;
   }
 
   static async getAttendanceByDate(date) {
-    const conn = await connect();
+    const conn = await connectToDatabase();
     const [rows] = await conn.execute(
       "SELECT * FROM attendance WHERE attendance_date = ?",
       [date]
@@ -71,7 +75,7 @@ class AttendanceModel {
   }
 
   static async deleteAttendance(id) {
-    const connection = await connect();
+    const connection = await connectToDatabase();
     try {
       await connection.execute(
         "DELETE FROM attendance WHERE attendance_id = ?",
@@ -85,7 +89,7 @@ class AttendanceModel {
   }
 
   static async getAttendancesByEmployee(employeeId) {
-    const connection = await connect();
+    const connection = await connectToDatabase();
     try {
       const [rows] = await connection.execute(
         "SELECT * FROM attendance WHERE employee_id = ?",
