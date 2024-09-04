@@ -3,16 +3,12 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const rootRoutes = require("./app/src/routes/rootRoutes.js");
+const helmet = require("helmet");
+const passport = require("passport");
 
 const app = express();
-app.use(
-  cors({
-    origin: "*",
-    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  })
-);
+app.use(helmet());
+
 let lastCommit = "";
 app.use(bodyParser.json({ limit: "10mb" }));
 app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
@@ -23,6 +19,19 @@ app.use(express.json());
 // Connect to databasep
 // connectToDatabase();
 
+/**
+ * initializes passport authentication
+ */
+app.use(passport.initialize());
+
+app.use(
+  cors({
+    origin: "*",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  })
+);
 // Routes
 app.use("/api", rootRoutes);
 

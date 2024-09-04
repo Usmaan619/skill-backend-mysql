@@ -32,13 +32,15 @@ class EmployeeModel {
         last_hike_amount,
         passwd,
         email,
+
         isActive,
+        user_name,
       } = employeeData;
 
       const hashPasswd = await hashedPassword(passwd);
 
       const [result] = await connection.execute(
-        "INSERT INTO employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount, passwd, email, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO employee (first_name, last_name, mobile_number, address, department, date_of_join, current_salary, position, last_hike_date, last_hike_amount, passwd, email, isActive,user_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?, ?, ?, ?)",
         [
           first_name,
           last_name,
@@ -53,6 +55,7 @@ class EmployeeModel {
           hashPasswd,
           email,
           isActive,
+          user_name,
         ]
       );
 
@@ -60,11 +63,11 @@ class EmployeeModel {
     });
   }
 
-  static async loginEmployee(email, passwd) {
+  static async loginEmployee(emailOrUsername, passwd) {
     return this.withConnection(async (connection) => {
       const [rows] = await connection.execute(
-        "SELECT * FROM employee WHERE email = ?",
-        [email]
+        "SELECT * FROM employee WHERE email = ? OR user_name = ? ",
+        [emailOrUsername, emailOrUsername]
       );
 
       if (!rows.length) {
@@ -79,8 +82,12 @@ class EmployeeModel {
         throw new APIError(400, "400", "Invalid password");
       }
 
+      let both;
+
+      if (employee.email) both = employee.email;
+      if (employee.user_name) both = employee.user_name;
       // Generate JWT token
-      const token = getToken(employee?.id, employee.email);
+      const token = getToken(employee?.id, both);
 
       // Return token without sensitive info
       delete employee.passwd;
@@ -119,10 +126,12 @@ class EmployeeModel {
         last_hike_date,
         last_hike_amount,
         isActive,
+        user_name,
+        id,
       } = employeeData;
 
       await connection.execute(
-        "UPDATE employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, isActive = ? WHERE id = ?",
+        "UPDATE employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, isActive = ? WHERE id = ? user_name = ?",
         [
           first_name,
           last_name,
@@ -135,6 +144,7 @@ class EmployeeModel {
           last_hike_date,
           last_hike_amount,
           isActive,
+          user_name,
           id,
         ]
       );
