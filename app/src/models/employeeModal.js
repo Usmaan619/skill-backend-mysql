@@ -72,6 +72,7 @@ class EmployeeModel {
       }
 
       const employee = rows[0];
+
       const isValidPassword = await bcrypt.compare(passwd, employee?.passwd);
 
       if (!isValidPassword) {
