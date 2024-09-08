@@ -1,5 +1,31 @@
 const UserModel = require("../models/userModel");
 
+const express = require("express");
+const router = express.Router();
+
+router.post("/register", async (req, res, next) => {
+  try {
+    const { name, email, user_name, passwd } = req.body;
+    const id = await UserModel.createUser(name, email, user_name, passwd);
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      userId: id,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/login", async (req, res, next) => {
+  try {
+    const user = await UserModel.loginUser(req?.body?.email, req?.body?.passwd);
+    res.json({ user, message: "Login Successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 class UserController {
   static async createUser(req, res) {
     try {
@@ -64,4 +90,4 @@ class UserController {
   }
 }
 
-module.exports = UserController;
+module.exports = router;

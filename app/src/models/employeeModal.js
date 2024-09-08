@@ -127,7 +127,6 @@ class EmployeeModel {
         last_hike_amount,
         isActive,
         user_name,
-        id,
       } = employeeData;
 
       await connection.execute(

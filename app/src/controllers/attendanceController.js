@@ -35,6 +35,22 @@ router.get("/getAllAttendance", async (req, res, next) => {
   }
 });
 
+router.get("/getFilteredAttendance", async (req, res, next) => {
+  try {
+    const { month, year, employeeId } = req.query;
+
+    const attendancesCount =
+      await AttendanceModel.getFullMonthlyAttendanceWithCount(
+        Number(employeeId),
+        Number(month),
+        Number(year)
+      );
+    res.json(attendancesCount);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/:id", async (req, res, next) => {
   try {
     const attendance = await AttendanceModel.getAttendanceById(req.params.id);

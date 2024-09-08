@@ -24,6 +24,28 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
+router.get("/getAllEmployees", async (req, res, next) => {
+  try {
+    const employees = await EmployeeModel.getAllEmployees();
+    res.json({ success: true, employees });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/getEmployeeById/:id", async (req, res, next) => {
+  try {
+    const employee = await EmployeeModel.getEmployeeById(req?.params?.id);
+    if (!employee) {
+      res.status(404).json({ message: "Employee not found" });
+    } else {
+      res.json(employee);
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 class EmployeeController {
   static async createEmployee(req, res, next) {
     try {
