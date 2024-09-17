@@ -112,7 +112,7 @@ class EmployeeModel {
     });
   }
 
-  static async updateEmployee(id, employeeData) {
+  static async updateEmployees(id, employeeData) {
     return this.withConnection(async (connection) => {
       const {
         first_name,
@@ -125,28 +125,36 @@ class EmployeeModel {
         position,
         last_hike_date,
         last_hike_amount,
-        isActive,
         user_name,
+        passwd,
       } = employeeData;
 
-      await connection.execute(
-        "UPDATE employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, isActive = ? WHERE id = ? user_name = ?",
-        [
-          first_name,
-          last_name,
-          mobile_number,
-          address,
-          department,
-          date_of_join,
-          current_salary,
-          position,
-          last_hike_date,
-          last_hike_amount,
-          isActive,
-          user_name,
-          id,
-        ]
-      );
+      // Ensure all values are defined, replace undefined with null
+      const params = [
+        first_name ?? null,
+        last_name ?? null,
+        mobile_number ?? null,
+        address ?? null,
+        department ?? null,
+        date_of_join ?? null,
+        current_salary ?? null,
+        position ?? null,
+        last_hike_date ?? null,
+        last_hike_amount ?? null,
+        user_name ?? null,
+        passwd ?? null,
+        id,
+      ];
+
+      try {
+        const [row] = await connection.execute(
+          "UPDATE employee SET first_name = ?, last_name = ?, mobile_number = ?, address = ?, department = ?, date_of_join = ?, current_salary = ?, position = ?, last_hike_date = ?, last_hike_amount = ?, user_name = ?, passwd = ? WHERE id = ?",
+          params
+        );
+        return row;
+      } catch (error) {
+        throw error; // Re-throw the error so it can be caught by the caller
+      }
     });
   }
 
@@ -162,6 +170,81 @@ class EmployeeModel {
         "UPDATE employee SET isActive = !isActive WHERE id = ?",
         [id]
       );
+    });
+  }
+
+  static async updateEmployeeLatest(id, employeeData) {
+    return this.withConnection(async (connection) => {
+      const columnsToUpdate = [];
+      const params = [];
+
+      // Fetch the existing employee record
+      const [employeeRow] = await connection.execute(
+        "SELECT passwd FROM employee WHERE id = ?",
+        [id]
+      );
+
+      if (!employeeRow.length) {
+        throw new APIError(404, "404", "Employee not found");
+      }
+
+      const employee = employeeRow[0]; // Assuming the employee exists and only one row is returned
+
+      // Define all possible columns except password
+      const allColumns = [
+        "first_name",
+        "last_name",
+        "mobile_number",
+        "address",
+        "department",
+        "date_of_join",
+        "current_salary",
+        "position",
+        "last_hike_date",
+        "last_hike_amount",
+        "user_name",
+        "email",
+      ];
+
+      // Iterate through all columns except password
+      for (const column of allColumns) {
+        if (column in employeeData && employeeData[column] !== undefined) {
+          columnsToUpdate.push(`${column} = ?`);
+          params.push(employeeData[column]);
+        }
+      }
+
+      // Handle password separately
+      if (employeeData.passwd) {
+        const isSamePassword = await bcrypt.compare(
+          employeeData.passwd,    
+          employee.passwd
+        );
+
+        // Check if the new password is different from the current password in the database
+
+        if (!isSamePassword) {
+          const hashedPasswd = await hashedPassword(employeeData.passwd);
+          columnsToUpdate.push(`passwd = ?`);
+          params.push(hashedPasswd);
+        }
+      }
+
+      // Add id as the last parameter
+      params.push(id);
+
+      try {
+        const updateQuery = `
+          UPDATE employee 
+          SET ${columnsToUpdate.join(", ")} 
+          WHERE id = ?
+        `;
+
+        const [row] = await connection.execute(updateQuery, params);
+        return row;
+      } catch (error) {
+        throw error; // Re-throw the error so it can be caught by the caller
+      }
     });
   }
 }

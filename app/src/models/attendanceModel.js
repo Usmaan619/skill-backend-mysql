@@ -16,15 +16,36 @@ class AttendanceModel {
   static async createAttendance(attendanceData) {
     return this.withConnection(async (connection) => {
       const [result] = await connection.execute(
-        "INSERT INTO attendance (employee_id, attendance_date, present, profile_img) VALUES (?, ?, ?, ?)",
+        "INSERT INTO attendance (employee_id, attendance_date, present, profile_img, time_in) VALUES (?, ?, ?, ?, ?)",
         [
           attendanceData?.employee_id,
           moment().format("YYYY-MM-DD"), // Using current date if not provided
           attendanceData?.present ?? "false", // Defaulting to false if not provided
           attendanceData?.profile_img ?? null, // Setting to null if not provided
+          moment().format("HH:mm:ss"), // Using current time for timeIn
         ]
       );
       return result.insertId;
+    });
+  }
+
+  static async updateAttendanceTimeOut(attendanceId) {
+    console.log("attendanceId: ", attendanceId);
+    return this.withConnection(async (connection) => {
+      // Format the current time in MySQL-compatible format
+      const currentTime = moment().format("HH:mm:ss");
+      console.log("currentTime: ", currentTime);
+
+      // Prepare the SQL query
+      const sql = "UPDATE attendance SET time_out = ? WHERE attendance_id = ?";
+
+      // Execute the query with prepared statement
+      const [result] = await connection.execute(sql, [
+        currentTime,
+        Number(attendanceId?.id),
+      ]);
+
+      return result.affectedRows;
     });
   }
 
@@ -232,26 +253,29 @@ class AttendanceModel {
   static async getFullMonthlyAttendanceWithCount(employeeId, month, year) {
     return this.withConnection(async (connection) => {
       const query = `
-        SELECT 
-          employee_id,
-          attendance_date,
-          YEAR(attendance_date) AS year,
-          MONTH(attendance_date) AS month,
-          present,  -- Include present status if needed
-          (SELECT COUNT(*) 
-           FROM attendance 
-           WHERE YEAR(attendance_date) = ? 
-             AND MONTH(attendance_date) = ? 
-             AND employee_id = ?) AS total_monthly_attendance -- Subquery for total count
-        FROM 
-          attendance
-        WHERE 
-          YEAR(attendance_date) = ? 
-          AND MONTH(attendance_date) = ?
-          AND employee_id = ?
-        ORDER BY 
-          attendance_date ASC;
-      `;
+      SELECT 
+        employee_id,
+        attendance_date,
+        YEAR(attendance_date) AS year,
+        MONTH(attendance_date) AS month,
+        present,
+        time_in,
+        time_out,
+        (SELECT COUNT(*) 
+         FROM attendance 
+         WHERE YEAR(attendance_date) = ? 
+           AND MONTH(attendance_date) = ? 
+           AND employee_id = ?) AS total_monthly_attendance,
+        TIMESTAMPDIFF(MINUTE, time_in, time_out) AS total_time_minutes
+      FROM 
+        attendance
+      WHERE 
+        YEAR(attendance_date) = ? 
+        AND MONTH(attendance_date) = ?
+        AND employee_id = ?
+      ORDER BY 
+        attendance_date ASC;
+    `;
 
       const params = [year, month, employeeId, year, month, employeeId];
       const [rows] = await connection.execute(query, params);

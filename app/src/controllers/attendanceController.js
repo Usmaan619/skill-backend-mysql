@@ -12,6 +12,15 @@ router.post("/create", async (req, res, next) => {
   }
 });
 
+router.post("/updateAttendanceTimeOut", async (req, res, next) => {
+  try {
+    await AttendanceModel.updateAttendanceTimeOut(req?.body);
+    res.status(201).json({ success: true, message: "Check out successfully" });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/getATByEmployee/:id", async (req, res, next) => {
   try {
     const attendance = await AttendanceModel.getAttendancesByEmployee(
