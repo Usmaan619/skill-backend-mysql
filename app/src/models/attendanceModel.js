@@ -30,18 +30,20 @@ class AttendanceModel {
   }
 
   static async updateAttendanceTimeOut(attendanceId) {
-    console.log("attendanceId: ", attendanceId);
     return this.withConnection(async (connection) => {
       // Format the current time in MySQL-compatible format
       const currentTime = moment().format("HH:mm:ss");
       console.log("currentTime: ", currentTime);
 
       // Prepare the SQL query
-      const sql = "UPDATE attendance SET time_out = ? WHERE attendance_id = ?";
+
+      const sql =
+        "UPDATE attendance SET time_out = ?, check_out_img = ? WHERE attendance_id = ?";
 
       // Execute the query with prepared statement
       const [result] = await connection.execute(sql, [
         currentTime,
+        attendanceId?.check_out_img,
         Number(attendanceId?.id),
       ]);
 
