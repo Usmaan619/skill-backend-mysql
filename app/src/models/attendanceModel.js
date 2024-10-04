@@ -19,10 +19,10 @@ class AttendanceModel {
         "INSERT INTO attendance (employee_id, attendance_date, present, profile_img, time_in) VALUES (?, ?, ?, ?, ?)",
         [
           attendanceData?.employee_id,
-          moment().format("YYYY-MM-DD"), // Using current date if not provided
-          attendanceData?.present ?? "false", // Defaulting to false if not provided
-          attendanceData?.profile_img ?? null, // Setting to null if not provided
-          moment().format("HH:mm:ss"), // Using current time for timeIn
+          moment().format("YYYY-MM-DD"),
+          attendanceData?.present ?? "false",
+          attendanceData?.profile_img ?? null,
+          moment().format("LTS"),
         ]
       );
       return result.insertId;
@@ -32,8 +32,7 @@ class AttendanceModel {
   static async updateAttendanceTimeOut(attendanceId) {
     return this.withConnection(async (connection) => {
       // Format the current time in MySQL-compatible format
-      const currentTime = moment().format("HH:mm:ss");
-      console.log("currentTime: ", currentTime);
+      const currentTime = moment().format("LTS");
 
       // Prepare the SQL query
 
@@ -138,7 +137,6 @@ class AttendanceModel {
         return rows;
       });
     } catch (error) {
-      console.error("Error fetching monthly attendance count:", error.message);
       throw error;
     }
   }
